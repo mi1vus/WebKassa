@@ -9,15 +9,95 @@ using System.Web.Script.Serialization;
 
 namespace WebKassaAPI
 {
+    public enum CheckType {
+        Покупка = 0,
+        Возврат_покупки,
+        Продажа,
+        Возврат_продажи
+    }
+    public enum TaxType
+    {
+        Без_НДС = 0,
+        С_НДС = 100
+    }
+    public enum RoundType
+    {
+        Без_округления = 0,
+        Округление_итога,
+        Округление_позиции
+    }
+    public enum PaymentType
+    {
+        Наличные = 0,
+        Банковская_карта,
+        Оплата_в_кредит,
+        Оплата_тарой
+    }
+
+
     public class Error
     {
         public string ErrorCode { get; set; }
         public string ErrorDescription { get; set; }
     }
 
+    public class CheckForSale
+    {
+        public string Token;
+        public string CashboxUniqueNumber;
+        public CheckType OperationType;
+        public PositionForSale[] Positions;
+        public PaymentForSale[] Payments;
+        public decimal? Change;
+        public RoundType RoundType;
+        public string ExternalCheckNumber;
+        public string CustomerEmail;
+    }
+
+    public class PositionForSale// : Good
+    {
+        public decimal Count { get; set; }
+        public decimal Price { get; set; }
+        public decimal Tax { get; set; }
+        public TaxType TaxType { get; set; }
+        public string PositionName { get; set; }
+        public decimal Discount { get; set; }
+        public decimal Markup { get; set; }
+        public string SectionCode { get; set; }
+        public bool IsStorno { get; set; }
+        public bool MarkupDeleted { get; set; }
+        public bool DiscountDeleted { get; set; }
+    }
+
+    public class PaymentForSale// : Osnovan
+    {
+        public decimal Sum { get; set; }
+        public PaymentType PaymentType { get; set; }
+    }
+
+    public class CheckFromWeb
+    {
+        public string CheckNumber;
+        public string DateTime;
+        public bool OfflineMode;
+        public bool CashboxUniqueNumber;
+        public Cashbox Cashbox;
+        public int CheckOrderNumber;
+        public int ShiftNumber;
+        public string EmployeeName;
+    }
+
+    public class Cashbox// : Osnovan
+    {
+        public string UnickueNumber;
+        public string RegidtrationNumber;
+        public string IdentityNumber;
+    }
+
     class WKAPI
     {
         public static string url = "https://devkkm.webkassa.kz/api";
+        public static string id_kassa = "SWK00030990";
 
         private static string authorize =
 "{" + Environment.NewLine +
@@ -29,15 +109,7 @@ namespace WebKassaAPI
         {
             var req = authorize.Replace("{0}", Login);
             req = req.Replace("{1}", Pass);
-            var authorize_Raw = POST("Authorize", req, 1/*request_code*/);
-            //++request_code;
-            //SaveCodes();
-            int kind = -1;
-            //if (!good_Raw.Contains("Kind"))
-            //{
-            //    var goods = GetGoodsList();
-            //    kind = goods.First(t => t.Item == item).Kind;
-            //}
+            var authorize_Raw = POST("Authorize", req);
             var err = JsonHelper.ParseResponseErrors(authorize_Raw);
             if (err != null)
             {
@@ -48,7 +120,33 @@ namespace WebKassaAPI
             return JsonHelper.ParseAuthorize(authorize_Raw);//JsonHelper.ParseGoodPrepare(good_Raw, kind);
         }
 
-        private static string POST(string method, string req_S, int id)
+        public static bool SetOrder(CheckForSale itemsToSale)
+        {
+            try
+            {
+                var req = new JavaScriptSerializer().Serialize(itemsToSale);
+                var order_Raw = POST("Check", req);
+
+                var err = JsonHelper.ParseResponseErrors(order_Raw);
+                var res = JsonHelper.ParseGood(order_Raw);
+                if (err != null)
+                {
+                    LogError("Authorize ERROR: " + string.Join("; ", err.Select(e => "code: [" + e.ErrorCode + "] Descr: " + e.ErrorDescription)), "JsonHelper.ParseResponseErrors");
+                    return false;
+                }
+
+
+
+                return JsonHelper.ParseGood(order_Raw) == null;//JsonHelper.ParseGoodPrepare(good_Raw, kind);
+            }
+            catch (Exception ex)
+            {
+                LogError("SetOrder ERROR: " + ex.ToString(), ex.StackTrace);
+                return false;
+            }
+        }
+
+        private static string POST(string method, string req_S)
         {
             var boundary = "------------------------" + DateTime.Now.Ticks;
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url + $"/{method}");

@@ -21,6 +21,95 @@ namespace WebKassaAPI
 
             return token;
         }
+
+        public static CheckFromWeb ParseGood(string src)
+        {
+            CheckFromWeb result = null;
+
+            if (!src.StartsWith("{") || !src.EndsWith("}"))
+                return result;
+
+            src = src.Substring(1, src.Length - 2);
+
+            if (Regex.IsMatch(src, "\\bErrors\\b"))
+            {
+                var lines = src.Split(new[] { "\"Errors\":" }, StringSplitOptions.RemoveEmptyEntries);
+                if (lines.Length <= 1 || !lines[0].StartsWith("\"Data\":{") || !lines[0].EndsWith("},"))
+                    return result;
+
+                src = lines[0].Substring(7, lines[0].Length - 8);
+            }
+
+
+                if (!src.StartsWith("{") || !src.EndsWith("}"))
+                return null;
+            src = src.Substring(1, src.Count() - 2);
+
+            result = new CheckFromWeb();
+            result.Cashbox = new Cashbox();
+
+            var parameters = src.Split(new[] { ",\"" }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var pair in parameters)
+            {
+                var values = pair.Split(new[] { "\":" }, StringSplitOptions.RemoveEmptyEntries);
+                if (values.Count() != 2)
+                    continue;
+
+                var nm = values[0];
+                if (nm.StartsWith("\""))
+                    nm = nm.Substring(1, nm.Count() - 1);
+                if (nm.EndsWith("\""))
+                    nm = nm.Substring(0, nm.Count() - 1);
+
+                var val = values[1];
+                if (val.StartsWith("\""))
+                    val = val.Substring(1, val.Count() - 1);
+                if (val.EndsWith("\""))
+                    val = val.Substring(0, val.Count() - 1);
+
+
+                switch (nm)
+                {
+                    case "CheckNumber":
+                        if (result != null)
+                            result.CheckNumber = val == "null" ? null : val;
+                        break;
+                    case "DateTime":
+                        if (result != null)
+                            result.DateTime = val == "null" ? null : val;
+                        break;
+                    case "OfflineMode":
+                        if (result != null)
+                            result.OfflineMode = bool.Parse(val);
+                        break;
+                    case "CashboxUniqueNumber":
+                        if (result != null)
+                            result.CashboxUniqueNumber = bool.Parse(val);
+                        break;
+                    case "Cashbox":
+                        if (result != null)
+                        {
+                            result.Cashbox.IdentityNumber = val == "null" ? null : val;
+                            result.Cashbox.RegidtrationNumber = val == "null" ? null : val;
+                            result.Cashbox.UnickueNumber = val == "null" ? null : val;
+                        }
+                        break;
+                    case "CheckOrderNumber":
+                        if (result != null)
+                            result.CheckOrderNumber = int.Parse(val);
+                        break;
+                    case "ShiftNumber":
+                        if (result != null)
+                            result.ShiftNumber = int.Parse(val);
+                        break;
+                    case "EmployeeName":
+                        if (result != null)
+                            result.EmployeeName = val == "null" ? null : val;
+                        break;
+                }
+            }
+            return result;
+        }
         /*
                 public static List<Good> ParseGoods(string src)
                 {
@@ -67,112 +156,7 @@ namespace WebKassaAPI
 
                     return ParseGood(src);
                 }
-                private static Good ParseGood(string src)
-                {
-                    Good result = null;
-                    int kind = -1;
 
-                    if (!src.StartsWith("{") || !src.EndsWith("}"))
-                        return null;
-                    src = src.Substring(1, src.Count() - 2);
-
-                    var parameters = src.Split(new[] { ",\"" }, StringSplitOptions.RemoveEmptyEntries);
-                    foreach (var pair in parameters)
-                    {
-                        var values = pair.Split(new[] { "\":" }, StringSplitOptions.RemoveEmptyEntries);
-                        if (values.Count() != 2)
-                            continue;
-
-                        var nm = values[0];
-                        if (nm.StartsWith("\""))
-                            nm = nm.Substring(1, nm.Count() - 1);
-                        if (nm.EndsWith("\""))
-                            nm = nm.Substring(0, nm.Count() - 1);
-
-                        var val = values[1];
-                        if (val.StartsWith("\""))
-                            val = val.Substring(1, val.Count() - 1);
-                        if (val.EndsWith("\""))
-                            val = val.Substring(0, val.Count() - 1);
-
-
-                        switch (nm)
-                        {
-                            case "Kind":
-                                kind = int.Parse(val);
-                                switch (kind)
-                                {
-                                    case 0:
-                                        result = new GoodShop();
-                                        break;
-                                    case 1:
-                                        result = new GoodService();
-                                        break;
-                                    case 2:
-                                        result = new GoodFuel();
-                                        break;
-                                }
-                                result.Kind = kind;
-                                break;
-                            case "Item":
-                                if (result != null)
-                                    result.Item = val == "null" ? null : val;
-                                break;
-                            case "Name":
-                                if (result != null)
-                                    result.Name = val == "null" ? null : val;
-                                break;
-                            case "DepartmentId":
-                                if (result != null)
-                                    result.DepartmentId = int.Parse(val);
-                                break;
-                            case "TaxID":
-                                if (result != null)
-                                    result.TaxID = int.Parse(val);
-                                break;
-                            case "Price":
-                                if (result != null)
-                                    result.Price = int.Parse(val);
-                                break;
-                            case "BatchDate":
-                                {
-                                    if ((result as GoodShop) != null)
-                                        (result as GoodShop).BatchDate = val == "null" ? null : val;
-                                    break;
-                                }
-                            case "GroupId":
-                                if ((result as GoodShop) != null)
-                                    (result as GoodShop).GroupId = int.Parse(val);
-                                if ((result as GoodService) != null)
-                                    (result as GoodService).GroupId = int.Parse(val);
-                                break;
-                            case "UnitName":
-                                if ((result as GoodShop) != null)
-                                    (result as GoodShop).UnitName = val == "null" ? null : val;
-                                if ((result as GoodService) != null)
-                                    (result as GoodService).UnitName = val == "null" ? null : val;
-                                break;
-                            case "RestQuantity":
-                                if ((result as GoodShop) != null)
-                                    (result as GoodShop).RestQuantity = int.Parse(val);
-                                break;
-                            case "ReturnDepartmentId":
-                                if ((result as GoodFuel) != null)
-                                    (result as GoodFuel).ReturnDepartmentId = int.Parse(val);
-                                break;
-                            case "ArbitraryPrice":
-                                if ((result as GoodFuel) != null)
-                                    (result as GoodFuel).ArbitraryPrice = bool.Parse(val);
-                                break;
-                            case "Complex":
-                                if ((result as GoodFuel) != null)
-                                    (result as GoodFuel).Complex = bool.Parse(val);
-                                break;
-                        }
-                    }
-                    result.InternalGroupId = result.Kind + "_" + result.Item;
-                    return result;
-                }
 
                 public static List<Osnovan> ParsegetOsnovans(string src)
                 {
@@ -328,10 +312,10 @@ namespace WebKassaAPI
                 return null;
 
             var errline = src.Split(new[] { "\"Errors\":" }, StringSplitOptions.RemoveEmptyEntries);
-            if (errline.Length <= 0 || !errline[0].StartsWith("[") || !errline[0].EndsWith("]"))
+            if (errline.Length <= 1 || !errline[errline.Length - 1].StartsWith("[") || !errline[errline.Length - 1].EndsWith("]"))
                 return new List<Error> { new Error { ErrorCode = "null", ErrorDescription = "Неверный формат ответа!" } };
 
-            var errs = errline[0].Substring(2, errline[0].Length - 4).Split(new[] { "},{" }, StringSplitOptions.RemoveEmptyEntries);
+            var errs = errline[errline.Length - 1].Substring(2, errline[errline.Length - 1].Length - 4).Split(new[] { "},{" }, StringSplitOptions.RemoveEmptyEntries);
             var res = new List<Error>();
             foreach (var err in errs)
             {
