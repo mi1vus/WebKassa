@@ -41,12 +41,23 @@ namespace WebKassaAPI
             }
 
 
-                if (!src.StartsWith("{") || !src.EndsWith("}"))
+            if (!src.StartsWith("{") || !src.EndsWith("}"))
                 return null;
             src = src.Substring(1, src.Count() - 2);
 
             result = new CheckFromWeb();
-            result.Cashbox = new Cashbox();
+            //result.Cashbox = new Cashbox();
+
+            var subObject = src.Split(new[] { "{" }, StringSplitOptions.RemoveEmptyEntries);
+            if (subObject.Length == 2)
+            {
+                src = subObject[0];
+                subObject = subObject[1].Split(new[] { "}" }, StringSplitOptions.RemoveEmptyEntries);
+                if (subObject.Length == 2)
+                {
+                    src += "sub," + subObject[1];
+                }
+            }
 
             var parameters = src.Split(new[] { ",\"" }, StringSplitOptions.RemoveEmptyEntries);
             foreach (var pair in parameters)
@@ -86,12 +97,18 @@ namespace WebKassaAPI
                         if (result != null)
                             result.CashboxUniqueNumber = bool.Parse(val);
                         break;
-                    case "Cashbox":
+                    case "CashboxOfflineMode":
                         if (result != null)
+                            result.CashboxOfflineMode = bool.Parse(val);
+                        break;
+                    case "StartOfflineMode":
+                        if (result != null)
+                            result.StartOfflineMode = val == "null" ? null : val;
+                        break;
+                    case "Cashbox":
+                        if (result != null & val == "sub,")
                         {
-                            result.Cashbox.IdentityNumber = val == "null" ? null : val;
-                            result.Cashbox.RegidtrationNumber = val == "null" ? null : val;
-                            result.Cashbox.UnickueNumber = val == "null" ? null : val;
+                            result.Cashbox = ParseCashbox("{" + subObject[0] + "}");
                         }
                         break;
                     case "CheckOrderNumber":
@@ -105,6 +122,55 @@ namespace WebKassaAPI
                     case "EmployeeName":
                         if (result != null)
                             result.EmployeeName = val == "null" ? null : val;
+                        break;
+                }
+            }
+            return result;
+        }
+        public static Cashbox ParseCashbox(string src)
+        {
+            Cashbox result = null;
+
+            if (!src.StartsWith("{") || !src.EndsWith("}"))
+                return result;
+
+            src = src.Substring(1, src.Length - 2);
+
+            result = new Cashbox();
+
+            var parameters = src.Split(new[] { ",\"" }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var pair in parameters)
+            {
+                var values = pair.Split(new[] { "\":" }, StringSplitOptions.RemoveEmptyEntries);
+                if (values.Count() != 2)
+                    continue;
+
+                var nm = values[0];
+                if (nm.StartsWith("\""))
+                    nm = nm.Substring(1, nm.Count() - 1);
+                if (nm.EndsWith("\""))
+                    nm = nm.Substring(0, nm.Count() - 1);
+
+                var val = values[1];
+                if (val.StartsWith("\""))
+                    val = val.Substring(1, val.Count() - 1);
+                if (val.EndsWith("\""))
+                    val = val.Substring(0, val.Count() - 1);
+
+
+                switch (nm)
+                {
+                    case "UniqueNumber":
+                        if (result != null)
+                            result.UniqueNumber = val == "null" ? null : val;
+                        break;
+                    case "RegistrationNumber":
+                        if (result != null)
+                            result.RegistrationNumber = val == "null" ? null : val;
+                        break;
+                    case "IdentityNumber":
+                        if (result != null)
+                            result.IdentityNumber = val == "null" ? null : val;
                         break;
                 }
             }
@@ -308,7 +374,7 @@ namespace WebKassaAPI
 
             src = src.Substring(1, src.Length - 2);
 
-            if (!Regex.IsMatch(src, "\\bErrors\\b"))
+            if (!Regex.IsMatch(src, "\\bErrors\\b") || Regex.IsMatch(src, "\"Errors\":null"))
                 return null;
 
             var errline = src.Split(new[] { "\"Errors\":" }, StringSplitOptions.RemoveEmptyEntries);

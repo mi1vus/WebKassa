@@ -66,7 +66,7 @@ namespace WebKassa
                 Payments = payments.ToArray(),
                 Change = null,
                 RoundType = RoundType.Без_округления,
-                ExternalCheckNumber = "123123",
+                ExternalCheckNumber = "123",
                 CustomerEmail = "milvus@e1.ru"
             };
 

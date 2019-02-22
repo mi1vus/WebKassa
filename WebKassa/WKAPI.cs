@@ -80,6 +80,8 @@ namespace WebKassaAPI
         public string CheckNumber;
         public string DateTime;
         public bool OfflineMode;
+        public bool CashboxOfflineMode;
+        public string StartOfflineMode;
         public bool CashboxUniqueNumber;
         public Cashbox Cashbox;
         public int CheckOrderNumber;
@@ -89,8 +91,8 @@ namespace WebKassaAPI
 
     public class Cashbox// : Osnovan
     {
-        public string UnickueNumber;
-        public string RegidtrationNumber;
+        public string UniqueNumber;
+        public string RegistrationNumber;
         public string IdentityNumber;
     }
 
@@ -120,7 +122,7 @@ namespace WebKassaAPI
             return JsonHelper.ParseAuthorize(authorize_Raw);//JsonHelper.ParseGoodPrepare(good_Raw, kind);
         }
 
-        public static bool SetOrder(CheckForSale itemsToSale)
+        public static CheckFromWeb SetOrder(CheckForSale itemsToSale)
         {
             try
             {
@@ -128,21 +130,19 @@ namespace WebKassaAPI
                 var order_Raw = POST("Check", req);
 
                 var err = JsonHelper.ParseResponseErrors(order_Raw);
-                var res = JsonHelper.ParseGood(order_Raw);
+                //CheckFromWeb res = JsonHelper.ParseGood(order_Raw);
                 if (err != null)
                 {
                     LogError("Authorize ERROR: " + string.Join("; ", err.Select(e => "code: [" + e.ErrorCode + "] Descr: " + e.ErrorDescription)), "JsonHelper.ParseResponseErrors");
-                    return false;
+                    return null;
                 }
 
-
-
-                return JsonHelper.ParseGood(order_Raw) == null;//JsonHelper.ParseGoodPrepare(good_Raw, kind);
+                return JsonHelper.ParseGood(order_Raw);//JsonHelper.ParseGoodPrepare(good_Raw, kind);
             }
             catch (Exception ex)
             {
                 LogError("SetOrder ERROR: " + ex.ToString(), ex.StackTrace);
-                return false;
+                return null;
             }
         }
 
