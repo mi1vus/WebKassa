@@ -24,10 +24,8 @@ namespace WebKassaAPI
 
         public static CheckFromWeb ParseGood(string src)
         {
-            CheckFromWeb result = null;
-
             if (!src.StartsWith("{") || !src.EndsWith("}"))
-                return result;
+                return null;
 
             src = src.Substring(1, src.Length - 2);
 
@@ -35,17 +33,18 @@ namespace WebKassaAPI
             {
                 var lines = src.Split(new[] { "\"Errors\":" }, StringSplitOptions.RemoveEmptyEntries);
                 if (lines.Length <= 1 || !lines[0].StartsWith("\"Data\":{") || !lines[0].EndsWith("},"))
-                    return result;
+                    return null;
 
                 src = lines[0].Substring(7, lines[0].Length - 8);
             }
-
+            else
+                src = src.Substring(7, src.Length - 7);
 
             if (!src.StartsWith("{") || !src.EndsWith("}"))
                 return null;
             src = src.Substring(1, src.Count() - 2);
 
-            result = new CheckFromWeb();
+            CheckFromWeb result = new CheckFromWeb();
             //result.Cashbox = new Cashbox();
 
             var subObject = src.Split(new[] { "{" }, StringSplitOptions.RemoveEmptyEntries);
@@ -176,9 +175,9 @@ namespace WebKassaAPI
             }
             return result;
         }
-        public static ZReportFromWeb ParseZReport(string src)
+        public static ReportFromWeb ParseReport(string src)
         {
-            ZReportFromWeb result = null;
+            ReportFromWeb result = null;
 
             if (!src.StartsWith("{") || !src.EndsWith("}"))
                 return result;
@@ -200,7 +199,7 @@ namespace WebKassaAPI
                 return null;
             src = src.Substring(1, src.Count() - 2);
 
-            result = new ZReportFromWeb();
+            result = new ReportFromWeb();
             //result.Cashbox = new Cashbox();
 
             var subObject = src.Split(new[] { "{" , "}" }, StringSplitOptions.RemoveEmptyEntries);
@@ -544,5 +543,4 @@ namespace WebKassaAPI
                 return res;
         }
     }
-
 }

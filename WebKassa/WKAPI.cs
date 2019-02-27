@@ -95,7 +95,7 @@ namespace WebKassaAPI
         public string IdentityNumber;
     }
 
-    public class ZReportFromWeb
+    public class ReportFromWeb
     {
         public int ReportNumber;
         public string TaxPayerName;
@@ -160,7 +160,7 @@ namespace WebKassaAPI
 "  \"Password\": \"{1}\"" + Environment.NewLine +
 "}" + Environment.NewLine;
 
-        private static string zReport =
+        private static string Report =
 "{" + Environment.NewLine +
 "  \"Token\": \"{0}\"," + Environment.NewLine +
 "  \"CashboxUniqueNumber\": \"{1}\"" + Environment.NewLine +
@@ -205,9 +205,9 @@ namespace WebKassaAPI
             }
         }
 
-        public static ZReportFromWeb ZReport(string Token, string CashboxUniqueNumber)
+        public static ReportFromWeb ZReport(string Token, string CashboxUniqueNumber)
         {
-            var req = zReport.Replace("{0}", Token);
+            var req = Report.Replace("{0}", Token);
             req = req.Replace("{1}", CashboxUniqueNumber);
             var zreport_Raw = POST("ZReport", req);
             var err = JsonHelper.ParseResponseErrors(zreport_Raw);
@@ -217,7 +217,21 @@ namespace WebKassaAPI
                 return null;
             }
 
-            return JsonHelper.ParseZReport(zreport_Raw);//JsonHelper.ParseGoodPrepare(good_Raw, kind);
+            return JsonHelper.ParseReport(zreport_Raw);//JsonHelper.ParseGoodPrepare(good_Raw, kind);
+        }
+        public static ReportFromWeb XReport(string Token, string CashboxUniqueNumber)
+        {
+            var req = Report.Replace("{0}", Token);
+            req = req.Replace("{1}", CashboxUniqueNumber);
+            var xreport_Raw = POST("XReport", req);
+            var err = JsonHelper.ParseResponseErrors(xreport_Raw);
+            if (err != null)
+            {
+                LogError("Authorize ERROR: " + string.Join("; ", err.Select(e => "code: [" + e.ErrorCode + "] Descr: " + e.ErrorDescription)), "JsonHelper.ParseResponseErrors");
+                return null;
+            }
+
+            return JsonHelper.ParseReport(xreport_Raw);//JsonHelper.ParseGoodPrepare(good_Raw, kind);
         }
 
         private static string POST(string method, string req_S)
