@@ -33,11 +33,10 @@ namespace WebKassaAPI
         Оплата_в_кредит,
         Оплата_тарой
     }
-
-
+    
     public class Error
     {
-        public string ErrorCode { get; set; }
+        public int ErrorCode { get; set; }
         public string ErrorDescription { get; set; }
     }
 
@@ -96,6 +95,60 @@ namespace WebKassaAPI
         public string IdentityNumber;
     }
 
+    public class ZReportFromWeb
+    {
+        public int ReportNumber;
+        public string TaxPayerName;
+        public string TaxPayerIN;
+        public bool TaxPayerVAT;
+        public string TaxPayerVATSerial;
+        public string TaxPayerVATNumber;
+        public string CashboxSN;
+        public string CashboxIN;
+        public string StartON;
+        public string ReportON;
+        public string CloseON;
+        public int CashierCode;
+        public int ShiftNumber;
+        public int DocumentCount;
+        public decimal PutMoneySum;
+        public decimal TakeMoneySum;
+        public string ControlSum;
+        public bool OfflineMode;
+        public decimal SumInCashbox;
+        public Oper Sell;
+        public Oper Buy;
+        public Oper ReturnSell;
+        public Oper ReturnBuy;
+        public NonNullable StartNonNullable;
+        public NonNullable EndNonNullable;
+    }
+
+    public class Oper// : Osnovan
+    {
+        public List<Payment> PaymentBytTypesApiModel;
+        public decimal Discount;
+        public decimal Markup;
+        public decimal Taken;
+        public decimal Change;
+        public int Count;
+        public decimal VAT;
+    }
+
+    public class Payment// : Osnovan
+    {
+        public decimal Sum;
+        public int Type;
+    }
+
+    public class NonNullable// : Osnovan
+    {
+        public decimal Sell;
+        public decimal Buy;
+        public decimal ReturnSell;
+        public decimal ReturnBuy;
+    }
+
     class WKAPI
     {
         public static string url = "https://devkkm.webkassa.kz/api";
@@ -105,6 +158,12 @@ namespace WebKassaAPI
 "{" + Environment.NewLine +
 "  \"Login\": \"{0}\"," + Environment.NewLine +
 "  \"Password\": \"{1}\"" + Environment.NewLine +
+"}" + Environment.NewLine;
+
+        private static string zReport =
+"{" + Environment.NewLine +
+"  \"Token\": \"{0}\"," + Environment.NewLine +
+"  \"CashboxUniqueNumber\": \"{1}\"" + Environment.NewLine +
 "}" + Environment.NewLine;
 
         public static string Authorize(string Login, string Pass)
@@ -144,6 +203,21 @@ namespace WebKassaAPI
                 LogError("SetOrder ERROR: " + ex.ToString(), ex.StackTrace);
                 return null;
             }
+        }
+
+        public static ZReportFromWeb ZReport(string Token, string CashboxUniqueNumber)
+        {
+            var req = zReport.Replace("{0}", Token);
+            req = req.Replace("{1}", CashboxUniqueNumber);
+            var zreport_Raw = POST("ZReport", req);
+            var err = JsonHelper.ParseResponseErrors(zreport_Raw);
+            if (err != null)
+            {
+                LogError("Authorize ERROR: " + string.Join("; ", err.Select(e => "code: [" + e.ErrorCode + "] Descr: " + e.ErrorDescription)), "JsonHelper.ParseResponseErrors");
+                return null;
+            }
+
+            return JsonHelper.ParseZReport(zreport_Raw);//JsonHelper.ParseGoodPrepare(good_Raw, kind);
         }
 
         private static string POST(string method, string req_S)

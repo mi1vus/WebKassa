@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 
 namespace WebKassaAPI
 {
-    class JsonHelper
+    public class JsonHelper
     {
         public static string ParseAuthorize(string src)
         {
@@ -176,201 +176,335 @@ namespace WebKassaAPI
             }
             return result;
         }
-        /*
-                public static List<Good> ParseGoods(string src)
-                {
-                    var begInd = src.IndexOf('[', 0);
-                    var endInd = src.IndexOf(']', 0);
+        public static ZReportFromWeb ParseZReport(string src)
+        {
+            ZReportFromWeb result = null;
 
-                    //            if (!src.StartsWith(
-                    //"{\r\n  \"GoodsList\":[") || !src.EndsWith("]\r\n  }"))
-                    //                return null;
+            if (!src.StartsWith("{") || !src.EndsWith("}"))
+                return result;
 
-                    src = src.Substring(begInd + 7, endInd - begInd - 11);
-                    src = src.Replace("\r\n      ", "").Replace("\r\n    ", "").Replace("\r\n  ", "");
+            src = src.Substring(1, src.Length - 2);
 
-                    var result = new List<Good>();
-
-                    var objs = src.Split(new[] { "},{" }, StringSplitOptions.RemoveEmptyEntries);
-                    var count = 0;
-                    foreach (var g in objs)
-                    {
-                        try
-                        {
-                            if (count > 0 && count < objs.Count() - 1)
-                                result.Add(ParseGood("{" + g + "}"));
-                            else if (count == objs.Count() - 1)
-                                result.Add(ParseGood("{" + g));
-                            else
-                                result.Add(ParseGood(g + "}"));
-                            ++count;
-                        }
-                        catch
-                        {
-                            continue;
-                        }
-                    }
+            if (Regex.IsMatch(src, "\\bErrors\\b"))
+            {
+                var lines = src.Split(new[] { "\"Errors\":" }, StringSplitOptions.RemoveEmptyEntries);
+                if (lines.Length <= 1 || !lines[0].StartsWith("\"Data\":{") || !lines[0].EndsWith("},"))
                     return result;
-                }
-                public static Good ParseGoodPrepare(string src, int kind = -1)
-                {
-                    src = src.Replace("\r\n      ", "").Replace("\r\n    ", "").Replace("\r\n  ", "");
-                    src = src.Substring(12, src.Length - 12 - 3);
 
-                    if (kind >= 0)
-                        src = src.Insert(1, "\"Kind\":" + kind + ",");
+                src = lines[0].Substring(7, lines[0].Length - 8);
+            } else {
+                src = src.Substring(7, src.Length - 8);
+            }
 
-                    return ParseGood(src);
-                }
+            if (!src.StartsWith("{") || !src.EndsWith("}"))
+                return null;
+            src = src.Substring(1, src.Count() - 2);
 
+            result = new ZReportFromWeb();
+            //result.Cashbox = new Cashbox();
 
-                public static List<Osnovan> ParsegetOsnovans(string src)
-                {
-                    var begInd = src.IndexOf('[', 0);
-                    var endInd = src.IndexOf(']', 0);
-
-                    //            if (!src.StartsWith(
-                    //"{\r\n  \"GoodsList\":[") || !src.EndsWith("]\r\n  }"))
-                    //                return null;
-
-                    src = src.Substring(begInd + 7, endInd - begInd - 11);
-                    src = src.Replace("\r\n      ", "").Replace("\r\n    ", "").Replace("\r\n  ", "");
-
-                    var result = new List<Osnovan>();
-
-                    var objs = src.Split(new[] { "},{" }, StringSplitOptions.RemoveEmptyEntries);
-                    var count = 0;
-                    foreach (var g in objs)
+            var subObject = src.Split(new[] { "{" , "}" }, StringSplitOptions.RemoveEmptyEntries);
+            string[] subs = new string[6];
+            int subIndex = 0;
+            src = "";
+            for (int i = 1; i < subObject.Length; ++i)
+            {
+                src += subObject[i-1] + "sub";
+                if (subObject[i].EndsWith("[")) {
+                    var ssubCnt = 0;
+                    do
                     {
-                        try
-                        {
-                            if (count > 0 && count < objs.Count() - 1)
-                                result.Add(ParseOsnovan("{" + g + "}"));
-                            else if (count == objs.Count() - 1)
-                                result.Add(ParseOsnovan("{" + g));
-                            else
-                                result.Add(ParseOsnovan(g + "}"));
-                            ++count;
-                        }
-                        catch
-                        {
-                            continue;
-                        }
-                    }
-                    return result;
+                        var ssubDel = ssubCnt > 1 ? "," : "";
+                        subs[subIndex] += ssubCnt == 0 ?
+                            subObject[i] :
+                            ssubDel + "{" +  subObject[i] + "}";
+                        ++ssubCnt;
+                        ++i;
+                    } while (!subObject[i].StartsWith("]"));
                 }
-                private static Osnovan ParseOsnovan(string src)
+                subs[subIndex] += subObject[i];
+                ++subIndex;
+                ++i;
+            }
+
+            var parameters = src.Split(new[] { ",\"" }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var pair in parameters)
+            {
+                var values = pair.Split(new[] { "\":" }, StringSplitOptions.RemoveEmptyEntries);
+                if (values.Count() != 2)
+                    continue;
+
+                var nm = values[0];
+                if (nm.StartsWith("\""))
+                    nm = nm.Substring(1, nm.Count() - 1);
+                if (nm.EndsWith("\""))
+                    nm = nm.Substring(0, nm.Count() - 1);
+
+                var val = values[1];
+                if (val.StartsWith("\""))
+                    val = val.Substring(1, val.Count() - 1);
+                if (val.EndsWith("\""))
+                    val = val.Substring(0, val.Count() - 1);
+
+
+                switch (nm)
                 {
-                    Osnovan result = new Osnovan();
-
-                    if (!src.StartsWith("{") || !src.EndsWith("}"))
-                        return null;
-                    src = src.Substring(1, src.Count() - 2);
-
-                    var parameters = src.Split(new[] { ",\"" }, StringSplitOptions.RemoveEmptyEntries);
-                    foreach (var pair in parameters)
-                    {
-                        var values = pair.Split(new[] { "\":" }, StringSplitOptions.RemoveEmptyEntries);
-                        if (values.Count() != 2)
-                            continue;
-
-                        var nm = values[0];
-                        if (nm.StartsWith("\""))
-                            nm = nm.Substring(1, nm.Count() - 1);
-                        if (nm.EndsWith("\""))
-                            nm = nm.Substring(0, nm.Count() - 1);
-
-                        var val = values[1];
-                        if (val.StartsWith("\""))
-                            val = val.Substring(1, val.Count() - 1);
-                        if (val.EndsWith("\""))
-                            val = val.Substring(0, val.Count() - 1);
-
-
-                        switch (nm)
+                    case "ReportNumber":
+                        if (result != null)
+                            result.ReportNumber = int.Parse(val);
+                        break;
+                    case "TaxPayerName":
+                        if (result != null)
+                            result.TaxPayerName = val == "null" ? null : val;
+                        break;
+                    case "TaxPayerIN":
+                        if (result != null)
+                            result.TaxPayerIN = val == "null" ? null : val;
+                        break;
+                    case "TaxPayerVAT":
+                        if (result != null)
+                            result.TaxPayerVAT = bool.Parse(val);
+                        break;
+                    case "TaxPayerVATSerial":
+                        if (result != null)
+                            result.TaxPayerVATSerial = val == "null" ? null : val;
+                        break;
+                    case "TaxPayerVATNumber":
+                        if (result != null)
+                            result.TaxPayerVATNumber = val == "null" ? null : val;
+                        break;
+                    case "CashboxSN":
+                        if (result != null)
                         {
-                            case "OsnovanId":
-                                if (result != null)
-                                    result.OsnovanId = int.Parse(val);
-                                break;
-                            case "Name":
-                                if (result != null)
-                                    result.Name = val == "null" ? null : val;
-                                break;
-                            case "ShortName":
-                                if (result != null)
-                                    result.ShortName = val == "null" ? null : val;
-                                break;
-                            case "NoMoneyInReports":
-                                if (result != null)
-                                    result.NoMoneyInReports = bool.Parse(val);
-                                break;
-                            case "ZeroAmountsInCheque":
-                                if (result != null)
-                                    result.ZeroAmountsInCheque = bool.Parse(val);
-                                break;
-                            case "PriceInCheque":
-                                if (result != null)
-                                    result.PriceInCheque = bool.Parse(val);
-                                break;
-                            case "IsDefault":
-                                if (result != null)
-                                    result.IsDefault = bool.Parse(val);
-                                break;
-                            case "IsDisallowed":
-                                if (result != null)
-                                    result.IsDisallowed = bool.Parse(val);
-                                break;
-                            case "IsHidden":
-                                if (result != null)
-                                    result.IsHidden = bool.Parse(val);
-                                break;
-                            case "ForGoodsAndServices":
-                                if (result != null)
-                                    result.ForGoodsAndServices = bool.Parse(val);
-                                break;
-                            case "ForFuels":
-                                if (result != null)
-                                    result.ForFuels = bool.Parse(val);
-                                break;
-                            case "DisallowPrepayMode":
-                                if (result != null)
-                                    result.DisallowPrepayMode = bool.Parse(val);
-                                break;
-                            case "DisallowPostpayMode":
-                                if (result != null)
-                                    result.DisallowPostpayMode = bool.Parse(val);
-                                break;
-                            case "PrintOsnovanName":
-                                if (result != null)
-                                    result.PrintOsnovanName = bool.Parse(val);
-                                break;
-                            case "FuelReturnsToTank":
-                                if (result != null)
-                                    result.FuelReturnsToTank = bool.Parse(val);
-                                break;
-                            case "MaxLitersPreset":
-                                if (result != null)
-                                    result.MaxLitersPreset = int.Parse(val);
-                                break;
-                            case "MaxMoneyPreset":
-                                if (result != null)
-                                    result.MaxMoneyPreset = int.Parse(val);
-                                break;
-                            case "DisallowMovePreset":
-                                if (result != null)
-                                    result.DisallowMovePreset = bool.Parse(val);
-                                break;
-
+                            result.CashboxSN = val == "null" ? null : val;
                         }
-                    }
-                    return result;
+                        break;
+                    case "CashboxIN":
+                        if (result != null)
+                            result.CashboxIN = val == "null" ? null : val;
+                        break;
+                    case "StartON":
+                        if (result != null)
+                            result.StartON = val == "null" ? null : val;
+                        break;
+                    case "ReportON":
+                        if (result != null)
+                            result.ReportON = val == "null" ? null : val;
+                        break;
+                    case "CloseON":
+                        if (result != null)
+                            result.CloseON = val == "null" ? null : val;
+                        break;
+                    case "CashierCode":
+                        if (result != null)
+                            result.CashierCode = int.Parse(val);
+                        break;
+                    case "ShiftNumber":
+                        if (result != null)
+                            result.ShiftNumber = int.Parse(val);
+                        break;
+                    case "DocumentCount":
+                        if (result != null)
+                            result.DocumentCount = int.Parse(val);
+                        break;
+                    case "PutMoneySum":
+                        if (result != null)
+                            result.PutMoneySum = decimal.Parse(val.Replace(".", System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator));
+                        break;
+                    case "TakeMoneySum":
+                        if (result != null)
+                            result.TakeMoneySum = decimal.Parse(val.Replace(".", System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator));
+                        break;
+                    case "ControlSum":
+                        if (result != null)
+                            result.ControlSum = val == "null" ? null : val;
+                        break;
+                    case "OfflineMode":
+                        if (result != null)
+                            result.OfflineMode = bool.Parse(val);
+                        break;
+                    case "SumInCashbox":
+                        if (result != null)
+                            result.SumInCashbox = decimal.Parse(val.Replace('.',','));
+                        break;
+                    case "Sell":
+                        if (result != null & val == "sub")
+                        {
+                            result.Sell = ParseOper("{" + subs[0] + "}");
+                        }
+                        break;
+                    case "Buy":
+                        if (result != null & val == "sub")
+                        {
+                            result.Buy = ParseOper("{" + subs[1] + "}");
+                        }
+                        break;
+                    case "ReturnSell":
+                        if (result != null & val == "sub")
+                        {
+                            result.ReturnSell = ParseOper("{" + subs[2] + "}");
+                        }
+                        break;
+                    case "ReturnBuy":
+                        if (result != null & val == "sub")
+                        {
+                            result.ReturnBuy = ParseOper("{" + subs[3] + "}");
+                        }
+                        break;
+                    case "StartNonNullable":
+                        if (result != null & val == "sub")
+                        {
+                            result.StartNonNullable = ParseNonNullable("{" + subs[4] + "}");
+                        }
+                        break;
+                    case "EndNonNullable":
+                        if (result != null & val == "sub")
+                        {
+                            result.EndNonNullable = ParseNonNullable("{" + subs[5] + "}");
+                        }
+                        break;
                 }
-        */
+            }
+            return result;
+        }
+        public static Oper ParseOper(string src)
+        {
+            Oper result = null;
+
+            if (!src.StartsWith("{") || !src.EndsWith("}"))
+                return result;
+
+            src = src.Substring(1, src.Length - 2);
+
+            result = new Oper();
+            result.PaymentBytTypesApiModel = new List<Payment>();
+            var payment = new Payment();
+
+            var parameters = src.Split(new[] { ",\"" , "[{", "}]" }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var pair in parameters)
+            {
+                var values = pair.Split(new[] { "\":" }, StringSplitOptions.RemoveEmptyEntries);
+                if (values.Count() != 2)
+                    continue;
+
+                var nm = values[0];
+                if (nm.StartsWith("\""))
+                    nm = nm.Substring(1, nm.Count() - 1);
+                if (nm.EndsWith("\""))
+                    nm = nm.Substring(0, nm.Count() - 1);
+
+                var val = values[1];
+                if (val.StartsWith("\""))
+                    val = val.Substring(1, val.Count() - 1);
+                if (val.EndsWith("\""))
+                    val = val.Substring(0, val.Count() - 1);
+
+
+                switch (nm)
+                {
+                    case "PaymentBytTypesApiModel":
+                        //if (result != null)
+                        //    result.PaymentBytTypesApiModel = null;
+                        break;
+                    case "Sum":
+                        if (result != null)
+                            payment.Sum = decimal.Parse(val.Replace(".", System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator));
+                        break;
+                    case "Type":
+                        if (result != null)
+                            payment.Type = int.Parse(val);
+                        break;
+                    case "Discount":
+                        if (result != null)
+                            result.Discount = decimal.Parse(val.Replace(".", System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator));
+                        break;
+                    case "Markup":
+                        if (result != null)
+                            result.Markup = decimal.Parse(val.Replace(".", System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator));
+                        break;
+                    case "Taken":
+                        if (result != null)
+                            result.Taken = decimal.Parse(val.Replace(".", System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator));
+                        break;
+                    case "Change":
+                        if (result != null)
+                            result.Change = decimal.Parse(val.Replace(".", System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator));
+                        break;
+                    case "Count":
+                        if (result != null)
+                            result.Count = int.Parse(val);
+                        break;
+                    case "VAT":
+                        if (result != null)
+                            result.VAT = decimal.Parse(val.Replace(".", System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator));
+                        break;
+                }
+            }
+
+            if (payment.Sum != 0 || payment.Type != 0)
+            {
+                result.PaymentBytTypesApiModel.Add(payment);
+            }
+            return result;
+        }
+        public static NonNullable ParseNonNullable(string src)
+        {
+            NonNullable result = null;
+
+            if (!src.StartsWith("{") || !src.EndsWith("}"))
+                return result;
+
+            src = src.Substring(1, src.Length - 2);
+
+            result = new NonNullable();
+
+            var parameters = src.Split(new[] { ",\"", "[{", "}]" }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var pair in parameters)
+            {
+                var values = pair.Split(new[] { "\":" }, StringSplitOptions.RemoveEmptyEntries);
+                if (values.Count() != 2)
+                    continue;
+
+                var nm = values[0];
+                if (nm.StartsWith("\""))
+                    nm = nm.Substring(1, nm.Count() - 1);
+                if (nm.EndsWith("\""))
+                    nm = nm.Substring(0, nm.Count() - 1);
+
+                var val = values[1];
+                if (val.StartsWith("\""))
+                    val = val.Substring(1, val.Count() - 1);
+                if (val.EndsWith("\""))
+                    val = val.Substring(0, val.Count() - 1);
+
+
+                switch (nm)
+                {
+                    case "Sell":
+                        if (result != null)
+                            result.Sell = decimal.Parse(val.Replace(".", System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator));
+                        break;
+                    case "Buy":
+                        if (result != null)
+                            result.Buy = decimal.Parse(val.Replace(".", System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator));
+                        break;
+                    case "ReturnSell":
+                        if (result != null)
+                            result.ReturnSell = decimal.Parse(val.Replace(".", System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator));
+                        break;
+                    case "ReturnBuy":
+                        if (result != null)
+                            result.ReturnBuy = decimal.Parse(val.Replace(".", System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator));
+                        break;
+                }
+            }
+
+            return result;
+        }
         public static List<Error> ParseResponseErrors(string src)
         {
             if (!src.StartsWith("{") || !src.EndsWith("}"))
-                return new List<Error> { new Error { ErrorCode = "null", ErrorDescription = "Неверный формат ответа!" } };
+                return new List<Error> { new Error { ErrorCode = -1, ErrorDescription = "Неверный формат ответа!" } };
 
             src = src.Substring(1, src.Length - 2);
 
@@ -378,8 +512,8 @@ namespace WebKassaAPI
                 return null;
 
             var errline = src.Split(new[] { "\"Errors\":" }, StringSplitOptions.RemoveEmptyEntries);
-            if (errline.Length <= 1 || !errline[errline.Length - 1].StartsWith("[") || !errline[errline.Length - 1].EndsWith("]"))
-                return new List<Error> { new Error { ErrorCode = "null", ErrorDescription = "Неверный формат ответа!" } };
+            if (!errline[errline.Length - 1].StartsWith("[") || !errline[errline.Length - 1].EndsWith("]"))
+                return new List<Error> { new Error { ErrorCode = -1, ErrorDescription = "Неверный формат ответа!" } };
 
             var errs = errline[errline.Length - 1].Substring(2, errline[errline.Length - 1].Length - 4).Split(new[] { "},{" }, StringSplitOptions.RemoveEmptyEntries);
             var res = new List<Error>();
@@ -392,15 +526,14 @@ namespace WebKassaAPI
                     var pair = par.Split(new[] { "\":" }, StringSplitOptions.RemoveEmptyEntries);
                     if (pair[0].EndsWith("\"Code"))
                     {
-                        errObj.ErrorCode = pair[1];
+                        errObj.ErrorCode = int.Parse(pair[1]);
                     }
                     else if (pair[0].EndsWith("Text"))
                     {
                         errObj.ErrorDescription = pair[1];
                     }
                 }
-                if (!string.IsNullOrWhiteSpace(errObj.ErrorCode) && !string.IsNullOrWhiteSpace(errObj.ErrorDescription) &&
-                    errObj.ErrorCode != "0")
+                if (errObj.ErrorCode != 0)
                 {
                     res.Add(errObj);
                 }
